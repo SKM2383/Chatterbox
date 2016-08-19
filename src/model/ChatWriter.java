@@ -33,7 +33,7 @@ public class ChatWriter {
     public static void showMessage(String text){
         Text message = new Text(text);
         message.setFont(notificationFont);
-        message.setFill(Color.BROWN);
+        message.setFill(Color.BLACK);
 
         chatControllerClass.showMessageInChat(message);
     }

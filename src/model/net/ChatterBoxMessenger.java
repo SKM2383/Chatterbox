@@ -6,24 +6,24 @@ import java.io.IOException;
 import java.net.Socket;
 
 public class ChatterBoxMessenger {
-    private final DataOutputStream connectionOutput;
-    private final DataInputStream connectionInput;
+    private final DataOutputStream OUTPUT;
+    private final DataInputStream INPUT;
 
     public ChatterBoxMessenger(Socket connection) throws IOException{
-        connectionInput = new DataInputStream(connection.getInputStream());
-        connectionOutput = new DataOutputStream(connection.getOutputStream());
+        INPUT = new DataInputStream(connection.getInputStream());
+        OUTPUT = new DataOutputStream(connection.getOutputStream());
     }
 
     public void sendMessage(String message) throws IOException{
-        connectionOutput.writeUTF(message);
+        OUTPUT.writeUTF(message);
     }
 
     public String receiveMessage() throws IOException{
-        return connectionInput.readUTF();
+        return INPUT.readUTF();
     }
 
     public void close() throws IOException{
-        connectionInput.close();
-        connectionOutput.close();
+        INPUT.close();
+        OUTPUT.close();
     }
 }

@@ -26,12 +26,14 @@ public class ChatterBoxSessionHandler implements Runnable{
         while(THIS_SERVER.running && !isClientUnavailable){
             try{
                 String clientMessage = CLIENT_CONNECTION.receiveMessage();
-
                 String formattedMessage = CLIENT_USERNAME + " : " + clientMessage;
 
-                THIS_SERVER.addClientMessage(formattedMessage);
+                THIS_SERVER.addMessage(formattedMessage);
             }
-            catch(SocketException se){}
+            catch(SocketException se){
+                ChatterLogger.log(Level.WARNING, "SessionHandler with user <" + CLIENT_USERNAME + "> closed with SocketException");
+                isClientUnavailable = true;
+            }
             catch(IOException ioe){
                 ChatterLogger.log(Level.WARNING, "Message from user <" + CLIENT_USERNAME + "> could not be received in session handler. Closing connection");
                 // Remove the client from the server connections, if it returns true that means the client is no longer able to be reached

@@ -1,0 +1,17 @@
+KEY
+	* -> Source code modification
+	# -> Documentation modification
+
+Changelog 1.0.1 [8/18/2016]
+	* Fixed the '!kick' command in ChatterCommandParser to allow the admin to actually kick moderators
+	* Deleted lines in ChatterSessionEstablisher and ChatterboxClient that set the socket timeout to 5 minutes, it was a useless setting left from debugging
+	* Added methods kickUser, promoteUser, demoteUser to ChatterBoxServer in order to allow better encapsulation of details
+	* Removed method setUserPermission from ChatterBoxServer to keep outside classes not within a protected scope from setting user permissions
+	* Removed method addClientMessage from ChatterBoxServer to allow any class to only have to use one method [addMessage] to add a new message, these messages still need to be formatted
+	* The server can now alert clients about what color messages show appear as on their screen with message tags
+		> For example:
+			When a user is promoted, the server sends a message that starts with the string '#promotion' to all clients who then parse this
+			message and show it as blue text. This allows all members in a chat room to see correctly colored text
+	
+	* Modified the main AppLauncher class to successfully close any server connections if the user clicked the exit button on the root window
+	  before clicking the disconnect button

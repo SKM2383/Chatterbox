@@ -7,6 +7,7 @@ import model.logging.ChatterLogger;
 import model.net.ChatterBoxInstance;
 import model.net.ChatterBoxMessenger;
 import model.net.exceptions.ChatterAuthenticationException;
+import model.net.utilities.ChatterExtractor;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -26,7 +27,6 @@ public class ChatterBoxClient extends Task<Void> implements ChatterBoxInstance{
         ROOM_PASS = roomPass;
 
         Socket conn = new Socket(serverIp, port);
-        conn.setSoTimeout(300000);
 
         MESSENGER = new ChatterBoxMessenger(conn);
     }
@@ -97,17 +97,45 @@ public class ChatterBoxClient extends Task<Void> implements ChatterBoxInstance{
             while(!isCancelled()){
                 String serverMessage = MESSENGER.receiveMessage();
 
+                String[] splitMessage = serverMessage.split(" ");
+                String messageCommand = splitMessage[0];
+
                 // Check to see if a server status string was sent
-                switch(serverMessage){
-                    case "#kicked":
+                switch(messageCommand){
+                    case "#leave":
                         // If kicked, throw a RuntimeException and display its message to the user
                         throw new RuntimeException("You were kicked from the room");
                     case "#shutdown":
                         //The server was shutdown
                         throw new RuntimeException("Server was shutdown. Closing connection");
+                    case "#info":
+                        // Info about a user's permission, show in silver
+                        String permissionMessage = ChatterExtractor.extract(splitMessage, 1, splitMessage.length, " ");
+                        ChatWriter.showMessage(permissionMessage, Color.SILVER);
+                        break;
+                    case "#promotion":
+                        // A user was promoted, show as blue text
+                        String promotionMessage = ChatterExtractor.extract(splitMessage, 1, splitMessage.length, " ");
+                        ChatWriter.showMessage(promotionMessage, Color.BLUE);
+                        break;
+                    case "#demotion":
+                        // A user was demoted, show as orange text
+                        String demotedMessage = ChatterExtractor.extract(splitMessage, 1, splitMessage.length, " ");
+                        ChatWriter.showMessage(demotedMessage, Color.ORANGE);
+                        break;
+                    case "#joined":
+                        // A user joined the room, show as green text
+                        String newUserMessage = ChatterExtractor.extract(splitMessage, 1, splitMessage.length, " ");
+                        ChatWriter.showMessage(newUserMessage, Color.GREEN);
+                        break;
+                    case "#kicked":
+                        // A user was kicked, show in orange text
+                        String kickedMessage = ChatterExtractor.extract(splitMessage, 1, splitMessage.length, " ");
+                        ChatWriter.showMessage(kickedMessage, Color.RED);
+                        break;
                     default:
-                        // Otherwise just display the message
-                        ChatWriter.showMessage(serverMessage);
+                        // Otherwise just show a message with black text
+                        ChatWriter.showMessage(serverMessage, Color.BLACK);
                 }
             }
         }
@@ -158,6 +186,7 @@ public class ChatterBoxClient extends Task<Void> implements ChatterBoxInstance{
 
     // This private inner class listens for new messages from the server, if these messages are a server command like
     // #kicked or #shutdown, the thread alerts the user and ends itself as well as the main ChatterClient thread
+    // It is implemented as a private inner class to keep the message queue from being exposed
     private class ClientMessageDispatcher implements Runnable{
         @Override
         public void run(){

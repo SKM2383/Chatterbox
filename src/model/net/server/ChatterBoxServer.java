@@ -1,6 +1,7 @@
 package model.net.server;
 
 import javafx.concurrent.Task;
+import javafx.scene.paint.Color;
 import model.ChatWriter;
 import model.logging.ChatterLogger;
 import model.net.ChatterBoxInstance;
@@ -42,11 +43,6 @@ public class ChatterBoxServer extends Task<Void> implements ChatterBoxInstance{
     // its messages, so this method is called to do that
     @Override
     public void addMessage(String message) {
-        messageQueue.add(SERVER_USERNAME + " : " + message);
-    }
-
-    // This method adds client messages that have already been formatted with the clients username
-    public void addClientMessage(String message){
         messageQueue.add(message);
     }
 
@@ -103,9 +99,13 @@ public class ChatterBoxServer extends Task<Void> implements ChatterBoxInstance{
                     // username while still allowing this method to return a boolean
                     latestUserToJoin = clientUsername;
 
+                    // The hashtag indicates the type of message, each has their own color that is filled in by the client
                     String userJoinedMessage = "User <" + clientUsername + "> joined room";
 
-                    messageQueue.add(userJoinedMessage);
+                    // Show the message to server and send it to all clients with the #joined tag
+                    ChatWriter.showMessage(userJoinedMessage, Color.GREEN);
+                    notifyAllClients("#joined " + userJoinedMessage);
+
                     ChatterLogger.log(Level.INFO, userJoinedMessage);
                 }
             }
@@ -123,7 +123,7 @@ public class ChatterBoxServer extends Task<Void> implements ChatterBoxInstance{
 
         try{
             if(clientConnections.containsKey(username)){
-                clientConnections.get(username).sendMessage("#kicked");
+                clientConnections.get(username).sendMessage("#leave"); //Send the kick command
                 clientConnections.get(username).close();
 
                 clientConnections.remove(username);
@@ -172,12 +172,59 @@ public class ChatterBoxServer extends Task<Void> implements ChatterBoxInstance{
         }
     }
 
-    public UserLevel getUserPermission(String username){
-        return userPermissions.get(username);
+    protected synchronized void promoteUser(String username){
+        // If the user is in the userPermission map, then set their privelage to admin
+        if(userPermissions.containsKey(username)){
+            userPermissions.replace(username, UserLevel.MODERATOR);
+
+            // Create a message to inform the server and log
+            String promoteMessage = "User <" + username + "> was promoted to moderator";
+
+            // Notify this server and all clients
+            ChatWriter.showMessage(promoteMessage, Color.BLUE);
+            notifyAllClients("#promotion " + promoteMessage);
+
+            ChatterLogger.log(Level.INFO, promoteMessage);
+        }
     }
 
-    protected void setUserPermission(String username, UserLevel newPermission){
-        userPermissions.replace(username, newPermission);
+    protected synchronized void demoteUser(String username){
+        if(userPermissions.containsKey(username)){
+            userPermissions.replace(username, UserLevel.BASIC);
+
+            // Create a message to inform the server and log
+            String demoteMessage = "User <" + username + "> was demoted";
+
+            // Notify server and all clients
+            ChatWriter.showMessage(demoteMessage, Color.ORANGE);
+            notifyAllClients("#demotion " + demoteMessage);
+
+            ChatterLogger.log(Level.INFO, demoteMessage);
+        }
+    }
+
+    protected synchronized void kickUser(String userToKick, String commandIssuer){
+        // If the user is a moderator or the admin then make sure the sender is the admin, otherwise ignore the command
+        if(userToKick.equals(SERVER_USERNAME) || getUserPermission(userToKick).equals(UserLevel.MODERATOR)){
+            if(!getUserPermission(commandIssuer).equals(UserLevel.ADMIN))
+                return;
+        }
+
+        // Inform the client they were kicked, then close the streams
+        removeClient(userToKick);
+
+        // Create a message to show on the server chat and logs
+        String kickMessage = "User <"+userToKick+"> was kicked by <" + commandIssuer + ">";
+
+        // Notify the server and all clients
+        ChatWriter.showMessage(kickMessage, Color.RED);
+        notifyAllClients("#kicked " + kickMessage); //Add the kicked tag so the clients show the message with red font
+
+        ChatterLogger.log(Level.INFO, kickMessage);
+    }
+
+    public UserLevel getUserPermission(String username){
+        return userPermissions.get(username);
     }
 
     public boolean isAlive(){ return running; }
@@ -215,6 +262,8 @@ public class ChatterBoxServer extends Task<Void> implements ChatterBoxInstance{
             }
 
             clientConnections.clear();
+
+            SERVER_SOCKET.close();
         }
         catch(IOException ioe){
             ChatterLogger.log(Level.SEVERE, "Server failed to shut down when notified");
@@ -238,9 +287,9 @@ public class ChatterBoxServer extends Task<Void> implements ChatterBoxInstance{
             try{
                 String newMessage = messageQueue.take();
 
-                // Make sure the new message isn't a server command like !disconnect to prevent clients from
+                // Make sure the new message isn't a server command like #leave to prevent clients from
                 // kicking other clients
-                if(newMessage.equals("#kicked") || newMessage.equals("#shutdown"))
+                if(newMessage.equals("#leave") || newMessage.equals("#shutdown"))
                     continue;
 
                 //If the CommandParser doesn't find a command, then its safe to write the message to chat
@@ -262,10 +311,7 @@ public class ChatterBoxServer extends Task<Void> implements ChatterBoxInstance{
             }
         }
 
-        // Notify all clients of the shutdown
-        notifyAllClients("#shutdown");
-
-        // Proceed to clean up server variables
+        // Proceed to clean up server variables and notify clients to shutdown
         shutdown();
 
         // If the message dispatcher thread is still alive, it is most likely being blocked by the messageQueue, so interrupt
@@ -283,10 +329,9 @@ public class ChatterBoxServer extends Task<Void> implements ChatterBoxInstance{
     // outside of the class
     private class ServerConnectionHandler implements Runnable{
         public void run(){
-            while(running){
+            while(isAlive()){
                 try {
                     Socket clientConnection = SERVER_SOCKET.accept();
-                    clientConnection.setSoTimeout(300000); // 5 minute timeout
 
                     //Extract the streams from this Socket
                     ChatterBoxMessenger clientMessenger = new ChatterBoxMessenger(clientConnection);

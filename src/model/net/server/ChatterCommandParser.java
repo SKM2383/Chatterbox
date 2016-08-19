@@ -3,9 +3,9 @@ package model.net.server;
 import javafx.scene.paint.Color;
 import model.ChatWriter;
 import model.logging.ChatterLogger;
+import model.net.utilities.ChatterExtractor;
 import model.net.utilities.permissions.UserLevel;
 
-import java.util.Arrays;
 import java.util.logging.Level;
 
 public class ChatterCommandParser {
@@ -46,9 +46,9 @@ public class ChatterCommandParser {
 
                     // If the sender was the server, then just write the results to the screen, otherwise send the result to the client sender
                     if(sender.equals(server.SERVER_USERNAME))
-                        ChatWriter.showMessage("User <" + userToQuery + ">" + " has permission: " + userPermission, Color.BLUE);
+                        ChatWriter.showMessage("User <" + userToQuery + ">" + " has permission: " + userPermission, Color.SILVER);
                     else
-                        server.notifyClient(sender, "User <" + userToQuery + ">" + " has permission: " + userPermission);
+                        server.notifyClient(sender, "#info User <" + userToQuery + ">" + " has permission: " + userPermission);
 
                     commandFound = true;
                 }
@@ -67,14 +67,17 @@ public class ChatterCommandParser {
                     String userToSendMessageTo = splitMessage[3];
 
                     // Concatenate the rest of the splitMessage into a single String to construct the private message
-                    String privateMessage = Arrays.toString(Arrays.copyOfRange(splitMessage, 3, splitMessage.length - 1));
+                    String privateMessage = ChatterExtractor.extract(splitMessage, 4, splitMessage.length, " ");
 
-                    server.notifyClient(userToSendMessageTo, "<PMSG>"+sender+": "+privateMessage);
+                    if(userToSendMessageTo.equals(server.SERVER_USERNAME))
+                        ChatWriter.showMessage("<PMSG>" + sender + ": " + privateMessage, Color.BLACK);
+                    else
+                        server.notifyClient(userToSendMessageTo, "<PMSG>" + sender + " : " + privateMessage);
 
                     commandFound = true;
                 }
                 catch(IndexOutOfBoundsException iob){
-                    ChatterLogger.log(Level.WARNING, "Parsed !pmsg command didn't have enough paramters");
+                    ChatterLogger.log(Level.WARNING, "Parsed !pmsg command didn't have enough parameters");
                     server.notifyClient(sender, "<Error>");
                 }
                 finally {
@@ -91,16 +94,7 @@ public class ChatterCommandParser {
                 String userToPromote = splitMessage[3];
 
                 // Change their current permission level to admin
-                server.setUserPermission(userToPromote, UserLevel.MODERATOR);
-
-                // Create a message to inform the server and log
-                String promoteMessage = "User <" + userToPromote + "> was promoted to moderator";
-
-                // Notify server and all clients
-                ChatWriter.showMessage(promoteMessage, Color.BLUE);
-                server.notifyAllClients(promoteMessage);
-
-                ChatterLogger.log(Level.INFO, promoteMessage);
+                server.promoteUser(userToPromote);
 
                 commandFound = true;
 
@@ -116,16 +110,7 @@ public class ChatterCommandParser {
                 String userToDemote = splitMessage[3];
 
                 // Change their current permission level to basic
-                server.setUserPermission(userToDemote, UserLevel.BASIC);
-
-                // Create a message to inform the server and log
-                String demoteMessage = "User <" + userToDemote + "> was demoted";
-
-                // Notify server and all clients
-                ChatWriter.showMessage(demoteMessage, Color.YELLOW);
-                server.notifyAllClients(demoteMessage);
-
-                ChatterLogger.log(Level.INFO, demoteMessage);
+                server.demoteUser(userToDemote);
 
                 commandFound = true;
 
@@ -142,21 +127,7 @@ public class ChatterCommandParser {
                     // Get the user to kick
                     String userToKick = splitMessage[3];
 
-                    // If the user is a moderator or the admin ignore the command
-                    if(userToKick.equals(server.SERVER_USERNAME) || server.getUserPermission(userToKick).equals(UserLevel.MODERATOR))
-                        break;
-
-                    // Inform the client they were kicked, then close the streams
-                    server.removeClient(userToKick);
-
-                    // Create a message to show on the server chat and logs
-                    String kickMessage = "User <"+userToKick+"> was kicked by <" + sender + ">";
-
-                    // Notify the server and all clients
-                    ChatWriter.showMessage(kickMessage, Color.ORANGE);
-                    server.notifyAllClients(kickMessage);
-
-                    ChatterLogger.log(Level.INFO, kickMessage);
+                    server.kickUser(userToKick, sender);
 
                     commandFound = true;
                 }

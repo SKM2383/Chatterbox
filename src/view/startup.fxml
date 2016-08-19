@@ -67,7 +67,7 @@
                       <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                     </rowConstraints>
                      <children>
-                        <RadioButton mnemonicParsing="false" onAction="#changeControlStates" selected="true" text="Server" toggleGroup="$connectionType" GridPane.halignment="CENTER" GridPane.valignment="CENTER">
+                        <RadioButton fx:id="radioButtonServer" mnemonicParsing="false" onAction="#changeControlStates" selected="true" text="Server" toggleGroup="$connectionType" GridPane.halignment="CENTER" GridPane.valignment="CENTER">
                            <font>
                               <Font name="Consolas" size="15.0" />
                            </font>
@@ -75,7 +75,7 @@
                               <ToggleGroup fx:id="connectionType" />
                            </toggleGroup>
                         </RadioButton>
-                        <RadioButton mnemonicParsing="false" onAction="#changeControlStates" onMouseClicked="#changeControlStates" text="Client" toggleGroup="$connectionType" GridPane.columnIndex="1" GridPane.halignment="CENTER" GridPane.valignment="CENTER">
+                        <RadioButton fx:id="radioButtonClient" mnemonicParsing="false" onAction="#changeControlStates" onMouseClicked="#changeControlStates" text="Client" toggleGroup="$connectionType" GridPane.columnIndex="1" GridPane.halignment="CENTER" GridPane.valignment="CENTER">
                            <font>
                               <Font name="Consolas" size="15.0" />
                            </font>
@@ -133,7 +133,7 @@
                         <Insets top="16.0" />
                      </GridPane.margin>
                   </Button>
-                  <Button fx:id="btnDisconnect" disable="true" mnemonicParsing="false" onAction="#disconnect" prefHeight="28.0" prefWidth="107.0" text="Disconnect" GridPane.columnIndex="1" GridPane.halignment="CENTER" GridPane.valignment="CENTER">
+                  <Button id="disconnectButton" fx:id="btnDisconnect" disable="true" mnemonicParsing="false" onAction="#disconnect" prefHeight="28.0" prefWidth="107.0" text="Disconnect" GridPane.columnIndex="1" GridPane.halignment="CENTER" GridPane.valignment="CENTER">
                      <font>
                         <Font name="Consolas" size="15.0" />
                      </font>

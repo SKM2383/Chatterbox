@@ -24,6 +24,10 @@ public class ChatController implements Initializable{
     @FXML
     private ToggleGroup connectionType;
     @FXML
+    private RadioButton radioButtonServer;
+    @FXML
+    private RadioButton radioButtonClient;
+    @FXML
     private TextField txtfldUsername;
     @FXML
     private TextField txtfldHostIp;
@@ -44,8 +48,10 @@ public class ChatController implements Initializable{
     @FXML
     private Label lblHostIp;
 
-    // Create a reference to a Task
-    Task<Void> chatTask;
+    private Task<Void> chatTask; // Create a reference to an FX Task that holds our chat task
+
+    // String to hold the username chosen by the user
+    private String chosenUsername = "";
 
     // When this controller is initialized, set the ChatWriter properties to the correct values
     @Override
@@ -135,7 +141,7 @@ public class ChatController implements Initializable{
 
             // Start our background chat task
             Thread chatThread = new Thread(chatTask);
-            chatThread.setDaemon(true);
+            //chatThread.setDaemon(true);
             chatThread.start();
 
             ChatterLogger.log(Level.INFO, "ChatterBoxMessenger thread started");
@@ -144,10 +150,19 @@ public class ChatController implements Initializable{
             btnDisconnect.setDisable(false);
             txtfldUserMessage.setDisable(false);
             btnSend.setDisable(false);
+
+            // Set the global chosenUsername to the username
+            chosenUsername = username;
         }
         catch(IOException ioe){
             ChatWriter.showErrorMessage("Network error occurred when trying to start connection");
-            ChatterLogger.log(Level.SEVERE, "    ChatterBoxInstance failed to start due to IOException");
+            ChatterLogger.log(Level.SEVERE, "ChatterBoxInstance failed to start due to IOException");
+
+            btnDisconnect.setDisable(true);
+            txtfldUserMessage.setDisable(true);
+            btnSend.setDisable(true);
+
+            btnConnect.setDisable(false);
         }
     }
 
@@ -164,20 +179,29 @@ public class ChatController implements Initializable{
         // Re-Enable the connect button
         btnConnect.setDisable(false);
 
-        chatTask.cancel();
+        chatTask.cancel(true);
 
         // Log the end of the disconnect
-        ChatterLogger.log(Level.INFO, "Disconnect finished successfully");
+        ChatterLogger.log(Level.INFO, "Disconnect finished");
     }
 
     @FXML
     public void sendMessage(){
-        ((ChatterBoxInstance) chatTask).addMessage(txtfldUserMessage.getText());
-        txtfldUserMessage.clear();
+        // If the user choose to be a server, then the message needs to be appended with the the server username since
+        // it is not inside the actual ChatterBoxServer class
+        if(radioButtonServer.isSelected()){
+            ((ChatterBoxInstance) chatTask).addMessage(chosenUsername + " : " + txtfldUserMessage.getText());
+            txtfldUserMessage.clear();
+        }
+        // Otherwise as a client, when the message is sent to the server it will be parsed properly
+        else{
+            ((ChatterBoxInstance) chatTask).addMessage(txtfldUserMessage.getText());
+            txtfldUserMessage.clear();
+        }
     }
 
     // This method is used by other classes to display colored text on the TextFlow, it is needed because other threads
-    // besides this FX thread is allowed to modify the controls
+    // besides this FX thread aren't allowed to modify the controls
     public void showMessageInChat(Text message){
         Platform.runLater(() -> {
             txtflowChat.getChildren().add(message);
